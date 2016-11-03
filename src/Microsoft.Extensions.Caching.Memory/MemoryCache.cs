@@ -121,14 +121,14 @@ namespace Microsoft.Extensions.Caching.Memory
             entry.LastAccessed = utcNow;
 
             CacheEntry priorEntry;
-            if (_entries.TryRemove(entry.Key, out priorEntry))
+            if (_entries.TryGetValue(entry.Key, out priorEntry))
             {
                 priorEntry.SetExpired(EvictionReason.Replaced);
             }
 
             if (!entry.CheckExpired(utcNow))
             {
-                if (_entries.TryAdd(entry.Key, entry))
+                if (priorEntry == null ? _entries.TryAdd(entry.Key, entry) : _entries.TryUpdate(entry.Key, entry, priorEntry))
                 {
                     entry.AttachTokens();
                 }
@@ -169,7 +169,7 @@ namespace Microsoft.Extensions.Caching.Memory
             if (_entries.TryGetValue(key, out entry))
             {
                 // Check if expired due to expiration tokens, timers, etc. and if so, remove it.
-                if (entry.CheckExpired(utcNow))
+                if (entry.CheckExpired(utcNow, allowReplacedEntries: true))
                 {
                     // TODO: For efficiency queue this up for batch removal
                     RemoveEntry(entry);

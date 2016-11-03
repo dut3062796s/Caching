@@ -1,12 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-#if NETSTANDARD1_3
-#else
-using System.Runtime.Remoting;
-using System.Runtime.Remoting.Messaging;
-#endif
-
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -182,13 +176,19 @@ namespace Microsoft.Extensions.Caching.Memory
             return _isExpired || CheckForExpiredTime(now) || CheckForExpiredTokens();
         }
 
+        internal bool CheckExpired(DateTimeOffset now, bool allowReplacedEntries)
+        {
+            var entryExpired = allowReplacedEntries ? _isExpired && _evictionReason != EvictionReason.Replaced : _isExpired;
+            return entryExpired || CheckForExpiredTime(now) || CheckForExpiredTokens();
+        }
+
         internal void SetExpired(EvictionReason reason)
         {
-            _isExpired = true;
             if (_evictionReason == EvictionReason.None)
             {
                 _evictionReason = reason;
             }
+            _isExpired = true;
             DetachTokens();
         }
 
