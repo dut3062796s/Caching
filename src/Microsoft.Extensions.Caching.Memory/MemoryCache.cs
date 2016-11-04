@@ -19,7 +19,6 @@ namespace Microsoft.Extensions.Caching.Memory
     public class MemoryCache : IMemoryCache
     {
         private readonly ConcurrentDictionary<object, CacheEntry> _entries;
-        private ICollection<KeyValuePair<object, CacheEntry>> _entriesCollection;
         private bool _disposed;
 
         // We store the delegates locally to prevent allocations
@@ -45,7 +44,6 @@ namespace Microsoft.Extensions.Caching.Memory
 
             var options = optionsAccessor.Value;
             _entries = new ConcurrentDictionary<object, CacheEntry>();
-            _entriesCollection = _entries;
             _setEntry = SetEntry;
             _entryExpirationNotification = EntryExpired;
 
@@ -73,6 +71,8 @@ namespace Microsoft.Extensions.Caching.Memory
         {
             get { return _entries.Count; }
         }
+
+        private ICollection<KeyValuePair<object, CacheEntry>> EntriesCollection => _entries;
 
         /// <inheritdoc />
         public ICacheEntry CreateEntry(object key)
@@ -212,7 +212,7 @@ namespace Microsoft.Extensions.Caching.Memory
 
         private void RemoveEntry(CacheEntry entry)
         {
-            if (_entriesCollection.Remove(new KeyValuePair<object, CacheEntry>(entry.Key, entry)))
+            if (EntriesCollection.Remove(new KeyValuePair<object, CacheEntry>(entry.Key, entry)))
             {
                 entry.InvokeEvictionCallbacks();
             }
