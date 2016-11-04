@@ -140,6 +140,10 @@ namespace Microsoft.Extensions.Caching.Memory
             }
             else
             {
+                if (priorEntry != null)
+                {
+                    RemoveEntry(priorEntry);
+                }
                 entry.InvokeEvictionCallbacks();
             }
 
