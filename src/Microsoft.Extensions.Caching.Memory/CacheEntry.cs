@@ -16,7 +16,6 @@ namespace Microsoft.Extensions.Caching.Memory
         private readonly Action<CacheEntry> _notifyCacheOfExpiration;
         private readonly Action<CacheEntry> _notifyCacheEntryDisposed;
         private IList<IDisposable> _expirationTokenRegistrations;
-        private EvictionReason _evictionReason;
         private IList<PostEvictionCallbackRegistration> _postEvictionCallbacks;
         private bool _isExpired;
 
@@ -160,6 +159,8 @@ namespace Microsoft.Extensions.Caching.Memory
 
         internal DateTimeOffset LastAccessed { get; set; }
 
+        internal EvictionReason EvictionReason { get; private set; }
+
         public void Dispose()
         {
             if (!_added)
@@ -176,17 +177,11 @@ namespace Microsoft.Extensions.Caching.Memory
             return _isExpired || CheckForExpiredTime(now) || CheckForExpiredTokens();
         }
 
-        internal bool CheckExpired(DateTimeOffset now, bool allowReplacedEntries)
-        {
-            var entryExpired = allowReplacedEntries ? _isExpired && _evictionReason != EvictionReason.Replaced : _isExpired;
-            return entryExpired || CheckForExpiredTime(now) || CheckForExpiredTokens();
-        }
-
         internal void SetExpired(EvictionReason reason)
         {
-            if (_evictionReason == EvictionReason.None)
+            if (EvictionReason == EvictionReason.None)
             {
-                _evictionReason = reason;
+                EvictionReason = reason;
             }
             _isExpired = true;
             DetachTokens();
@@ -302,7 +297,7 @@ namespace Microsoft.Extensions.Caching.Memory
 
                 try
                 {
-                    registration.EvictionCallback?.Invoke(entry.Key, entry.Value, entry._evictionReason, registration.State);
+                    registration.EvictionCallback?.Invoke(entry.Key, entry.Value, entry.EvictionReason, registration.State);
                 }
                 catch (Exception)
                 {
