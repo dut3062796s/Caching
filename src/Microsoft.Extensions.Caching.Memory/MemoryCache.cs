@@ -120,23 +120,28 @@ namespace Microsoft.Extensions.Caching.Memory
             // Initialize the last access timestamp at the time the entry is added
             entry.LastAccessed = utcNow;
 
+            var entryExpired = entry.CheckExpired(utcNow);
+
+
             CacheEntry priorEntry;
-            if (_entries.TryGetValue(entry.Key, out priorEntry))
+            var priorEntryRetrieved = false;
+            while (true)
+            {
+                priorEntryRetrieved = _entries.TryGetValue(entry.Key, out priorEntry);
+                if (priorEntry == null ? _entries.TryAdd(entry.Key, entry) : _entries.TryUpdate(entry.Key, entry, priorEntry))
+                {
+                    break;
+                }
+            }
+
+            if (priorEntryRetrieved)
             {
                 priorEntry.SetExpired(EvictionReason.Replaced);
             }
 
-            if (!entry.CheckExpired(utcNow))
+            if (!entryExpired)
             {
-                if (priorEntry == null ? _entries.TryAdd(entry.Key, entry) : _entries.TryUpdate(entry.Key, entry, priorEntry))
-                {
-                    entry.AttachTokens();
-                }
-                else
-                {
-                    entry.SetExpired(EvictionReason.Replaced);
-                    entry.InvokeEvictionCallbacks();
-                }
+                entry.AttachTokens();
             }
             else
             {
