@@ -128,7 +128,22 @@ namespace Microsoft.Extensions.Caching.Memory
 
             if (!entry.CheckExpired(utcNow))
             {
-                if (priorEntry == null ? _entries.TryAdd(entry.Key, entry) : _entries.TryUpdate(entry.Key, entry, priorEntry))
+                var entryAdded = false;
+
+                if (priorEntry == null)
+                {
+                    entryAdded = _entries.TryAdd(entry.Key, entry);
+                }
+                else
+                {
+                    entryAdded = _entries.TryUpdate(entry.Key, entry, priorEntry);
+                    if (entryAdded == false)
+                    {
+                        entryAdded = _entries.TryAdd(entry.Key, entry);
+                    }
+                }
+
+                if (entryAdded)
                 {
                     entry.AttachTokens();
                 }
