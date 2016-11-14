@@ -20,6 +20,7 @@ namespace Microsoft.Extensions.Caching.Memory
     {
         private readonly ConcurrentDictionary<object, CacheEntry> _entries;
         private bool _disposed;
+        private object _writeLock = new object();
 
         // We store the delegates locally to prevent allocations
         // every time a new CacheEntry is created.
@@ -120,15 +121,26 @@ namespace Microsoft.Extensions.Caching.Memory
             // Initialize the last access timestamp at the time the entry is added
             entry.LastAccessed = utcNow;
 
+            var entryExpired = entry.CheckExpired(utcNow);
+
             CacheEntry priorEntry;
-            if (_entries.TryGetValue(entry.Key, out priorEntry))
+            var priorEntryRetrieved = false;
+            var addedNewEntry = false;
+
+            lock(_writeLock)
+            {
+                priorEntryRetrieved = _entries.TryGetValue(entry.Key, out priorEntry);
+                addedNewEntry = priorEntry == null ? _entries.TryAdd(entry.Key, entry) : _entries.TryUpdate(entry.Key, entry, priorEntry);
+            }
+
+            if (priorEntryRetrieved)
             {
                 priorEntry.SetExpired(EvictionReason.Replaced);
             }
 
-            if (!entry.CheckExpired(utcNow))
+            if (!entryExpired)
             {
-                if (priorEntry == null ? _entries.TryAdd(entry.Key, entry) : _entries.TryUpdate(entry.Key, entry, priorEntry))
+                if (addedNewEntry)
                 {
                     entry.AttachTokens();
                 }
@@ -206,7 +218,14 @@ namespace Microsoft.Extensions.Caching.Memory
 
             CheckDisposed();
             CacheEntry entry;
-            if (_entries.TryRemove(key, out entry))
+            var removed = false;
+
+            lock (_writeLock)
+            {
+                removed = _entries.TryRemove(key, out entry);
+            }
+
+            if (removed)
             {
                 entry.SetExpired(EvictionReason.Removed);
                 entry.InvokeEvictionCallbacks();
@@ -217,7 +236,14 @@ namespace Microsoft.Extensions.Caching.Memory
 
         private void RemoveEntry(CacheEntry entry)
         {
-            if (EntriesCollection.Remove(new KeyValuePair<object, CacheEntry>(entry.Key, entry)))
+            var removed = false;
+
+            lock (_writeLock)
+            {
+                removed = EntriesCollection.Remove(new KeyValuePair<object, CacheEntry>(entry.Key, entry));
+            }
+
+            if (removed)
             {
                 entry.InvokeEvictionCallbacks();
             }
