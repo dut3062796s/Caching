@@ -132,13 +132,19 @@ namespace Microsoft.Extensions.Caching.Memory
 
                 if (priorEntry == null)
                 {
+                    // Try to add the new entry if no previous entries exist.
                     entryAdded = _entries.TryAdd(entry.Key, entry);
                 }
                 else
                 {
+                    // Try to update with the new entry if a previous entries exist.
                     entryAdded = _entries.TryUpdate(entry.Key, entry, priorEntry);
-                    if (entryAdded == false)
+
+                    if (!entryAdded)
                     {
+                        // The update may fail due if the previous entry was removed after being retrieved.
+                        // Adding the new entry will only succeed if no entry has been added since the removal.
+                        // This guarantees removing an old entry does not prevent a new entry from being added.
                         entryAdded = _entries.TryAdd(entry.Key, entry);
                     }
                 }
