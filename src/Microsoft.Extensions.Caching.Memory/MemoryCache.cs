@@ -158,19 +158,19 @@ namespace Microsoft.Extensions.Caching.Memory
                     entry.SetExpired(EvictionReason.Replaced);
                     entry.InvokeEvictionCallbacks();
                 }
+
+                if (priorEntry != null)
+                {
+                    priorEntry.InvokeEvictionCallbacks();
+                }
             }
             else
             {
+                entry.InvokeEvictionCallbacks();
                 if (priorEntry != null)
                 {
                     RemoveEntry(priorEntry);
                 }
-                entry.InvokeEvictionCallbacks();
-            }
-
-            if (priorEntry != null)
-            {
-                priorEntry.InvokeEvictionCallbacks();
             }
 
             StartScanForExpiredItems();
