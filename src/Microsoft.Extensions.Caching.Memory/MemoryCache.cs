@@ -142,9 +142,9 @@ namespace Microsoft.Extensions.Caching.Memory
 
                     if (!entryAdded)
                     {
-                        // The update may fail due if the previous entry was removed after being retrieved.
-                        // Adding the new entry will only succeed if no entry has been added since the removal.
-                        // This guarantees removing an old entry does not prevent a new entry from being added.
+                        // The update will fail if the previous entry was removed after retrival.
+                        // Adding the new entry will succeed only if no entry has been added since.
+                        // This guarantees removing an old entry does not prevent adding a new entry.
                         entryAdded = _entries.TryAdd(entry.Key, entry);
                     }
                 }
